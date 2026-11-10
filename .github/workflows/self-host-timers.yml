@@ -1,0 +1,83 @@
+name: Self-host timers
+
+# Replaces the "crons" block that used to live in apps/web/vercel.json.
+# Vercel's free (Hobby) plan only allows daily cron jobs, so these jobs are
+# triggered from GitHub Actions instead. GitHub's fastest schedule is every
+# 5 minutes, so the old every-minute job now runs every 5 minutes.
+#
+# Required repository secrets (Settings > Secrets and variables > Actions):
+#   APP_URL      e.g. https://your-project.vercel.app (no trailing slash needed)
+#   CRON_SECRET  must match the CRON_SECRET environment variable on Vercel
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+    - cron: "*/15 * * * *"
+    - cron: "7 * * * *"
+    - cron: "37 4 * * *"
+  workflow_dispatch:
+    inputs:
+      group:
+        description: "Which group of jobs to run now"
+        required: true
+        default: "five"
+        type: choice
+        options:
+          - five
+          - quarter
+          - hourly
+          - daily
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call app endpoints
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SCHEDULE: ${{ github.event.schedule }}
+          INPUT_GROUP: ${{ github.event.inputs.group }}
+        run: |
+          set -u
+
+          if [ -z "${APP_URL:-}" ] || [ -z "${CRON_SECRET:-}" ]; then
+            echo "APP_URL and CRON_SECRET repository secrets must both be set."
+            exit 1
+          fi
+
+          group="${INPUT_GROUP:-}"
+          if [ -z "$group" ]; then
+            case "$SCHEDULE" in
+              "*/5 * * * *")  group=five ;;
+              "*/15 * * * *") group=quarter ;;
+              "7 * * * *")    group=hourly ;;
+              "37 4 * * *")   group=daily ;;
+              *) echo "Unknown schedule: $SCHEDULE"; exit 1 ;;
+            esac
+          fi
+
+          case "$group" in
+            five)    paths="/api/cron/scheduled-actions" ;;
+            quarter) paths="/api/meeting-briefs /api/cron/automation-jobs" ;;
+            hourly)  paths="/api/watch/all /api/follow-up-reminders" ;;
+            daily)   paths="/api/cron/draft-cleanup /api/cron/reasoning-retention /api/cron/mobile-push-retention /api/cron/email-send-operation-retention" ;;
+            *) echo "Unknown group: $group"; exit 1 ;;
+          esac
+
+          base="${APP_URL%/}"
+          failed=0
+          for path in $paths; do
+            code=$(curl -sS -o /dev/null --max-time 120 -w "%{http_code}" \
+              -H "Authorization: Bearer $CRON_SECRET" "$base$path" || echo "000")
+            echo "$path -> HTTP $code"
+            case "$code" in
+              2*) ;;
+              *) failed=1 ;;
+            esac
+          done
+
+          exit "$failed"
