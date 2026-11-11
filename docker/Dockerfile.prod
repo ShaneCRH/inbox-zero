@@ -90,6 +90,12 @@ ENV NEXT_PUBLIC_EXTERNAL_API_ENABLED=${NEXT_PUBLIC_EXTERNAL_API_ENABLED}
 ARG NEXT_PUBLIC_AI_MODEL_SETTINGS_DISABLED="NEXT_PUBLIC_AI_MODEL_SETTINGS_DISABLED_PLACEHOLDER"
 ENV NEXT_PUBLIC_AI_MODEL_SETTINGS_DISABLED=${NEXT_PUBLIC_AI_MODEL_SETTINGS_DISABLED}
 
+# pnpm re-checks dependencies before running scripts; its hard-link import then
+# fails across Docker layers on GitHub runners (os error 18), so skip the check
+# and copy files instead of linking.
+ENV npm_config_verify_deps_before_run=false
+ENV npm_config_package_import_method=copy
+
 # Provide safe dummy envs so Next build can complete at image build time
 ENV DATABASE_URL="postgresql://dummy:dummy@dummy:5432/dummy?schema=public"
 ENV DIRECT_URL="postgresql://dummy:dummy@dummy:5432/dummy?schema=public"
