@@ -126,6 +126,8 @@ RUN cd /app/apps/web \
  && pnpm --config.verify-deps-before-run=false exec next build \
  && pnpm exec serwist build serwist.config.mjs \
  && cd /app \
+ && mkdir -p apps/web/@next/third-parties/google \
+ && echo '{"name":"google","version":"0.0.0"}' > apps/web/@next/third-parties/google/package.json \
  && pnpm --filter inbox-zero-ai deploy --legacy --prod /tmp/apps/web \
  && pnpm --filter @inboxzero/worker deploy --legacy --prod /tmp/apps/worker \
  && rm -rf apps/web/.next/cache
