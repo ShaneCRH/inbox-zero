@@ -93,8 +93,8 @@ ENV NEXT_PUBLIC_AI_MODEL_SETTINGS_DISABLED=${NEXT_PUBLIC_AI_MODEL_SETTINGS_DISAB
 # pnpm re-checks dependencies before running scripts; its hard-link import then
 # fails across Docker layers on GitHub runners (os error 18), so skip the check
 # and copy files instead of linking.
-ENV npm_config_verify_deps_before_run=false
-ENV npm_config_package_import_method=copy
+RUN pnpm config set verify-deps-before-run false \
+ && pnpm config set package-import-method copy
 
 # Provide safe dummy envs so Next build can complete at image build time
 ENV DATABASE_URL="postgresql://dummy:dummy@dummy:5432/dummy?schema=public"
@@ -123,7 +123,7 @@ RUN rm -f /app/apps/web/.env && touch /app/apps/web/.env
 RUN npx prisma generate --schema=apps/web/prisma/schema.prisma
 
 RUN cd /app/apps/web \
- && pnpm exec next build \
+ && pnpm --config.verify-deps-before-run=false exec next build \
  && pnpm exec serwist build serwist.config.mjs \
  && cd /app \
  && pnpm --filter inbox-zero-ai deploy --legacy --prod /tmp/apps/web \
