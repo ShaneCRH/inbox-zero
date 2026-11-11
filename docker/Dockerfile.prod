@@ -129,7 +129,6 @@ RUN cd /app/apps/web \
  && mkdir -p apps/web/@next/third-parties/google \
  && echo '{"name":"google","version":"0.0.0"}' > apps/web/@next/third-parties/google/package.json \
  && pnpm --filter inbox-zero-ai deploy --legacy --prod /tmp/apps/web \
- && pnpm --filter @inboxzero/worker deploy --legacy --prod /tmp/apps/worker \
  && rm -rf apps/web/.next/cache
 
 RUN rm -f /app/apps/web/.env /app/apps/web/.next/standalone/apps/web/.env
@@ -148,7 +147,6 @@ COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder /app/apps/web/prisma ./apps/web/prisma
 COPY --from=builder /tmp/apps/web/node_modules ./apps/web/node_modules
-COPY --from=builder /tmp/apps/worker ./apps/worker
 
 # Fail the image build if the standalone server is missing traced runtime deps.
 RUN test -f apps/web/server.js \
